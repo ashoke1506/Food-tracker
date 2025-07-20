@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Food Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            futuristic: ['"Orbitron"', 'sans-serif'],
+          },
+          colors: {
+            glass: 'rgba(255, 255, 255, 0.1)',
+            border: 'rgba(255, 255, 255, 0.2)'
+          }
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white font-futuristic p-4 min-h-screen">
+
+  <div class="max-w-xl mx-auto space-y-6">
+    <h1 class="text-3xl text-center font-bold">🍽️ Smart Food Tracker</h1>
+
+    <!-- Input Section -->
+    <div class="bg-glass border border-border backdrop-blur-lg rounded-2xl p-4 space-y-4 shadow-lg">
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input id="food" type="text" placeholder="Food name" oninput="suggestCalories()"
+          class="flex-1 p-2 rounded-xl bg-gray-800 text-white focus:outline-none" list="foodList" />
+        <input id="amount" type="number" placeholder="Amount (g)" class="w-32 p-2 rounded-xl bg-gray-800 text-white focus:outline-none" />
+        <button onclick="addMeal()" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl">➕ Add</button>
+      </div>
+      <datalist id="foodList"></datalist>
+      <p id="prediction" class="text-sm text-blue-300"></p>
+    </div>
+
+    <!-- Progress -->
+    <div class="flex justify-center items-center">
+      <div class="relative w-32 h-32">
+        <svg class="absolute top-0 left-0 w-full h-full">
+          <circle cx="64" cy="64" r="50" stroke="gray" stroke-width="10" fill="none"/>
+          <circle id="progressRing" cx="64" cy="64" r="50" stroke="#3b82f6" stroke-width="10" fill="none"
+                  stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" />
+        </svg>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+          <div class="text-lg font-bold" id="total">0</div>
+          <div class="text-sm text-gray-400">/ 2000 kcal</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meals List -->
+    <div id="meals" class="space-y-2"></div>
+  </div>
+
+  <script>
+    const DEFAULT_DB = {
+      "banana": 0.89,
+      "apple": 0.52,
+      "rice": 1.3,
+      "chicken": 2.39,
+      "egg": 1.55,
+      "milk": 0.64,
+      "bread": 2.65,
+      "oats": 3.89,
+      "peanut butter": 5.88
+    };
+
+    let foodDB = JSON.parse(localStorage.getItem("foodDB") || JSON.stringify(DEFAULT_DB));
+    let meals = JSON.parse(localStorage.getItem("meals") || "[]");
+
+    const MAX_CAL = 2000;
+
+    function suggestCalories() {
+      const food = document.getElementById("food").value.toLowerCase();
+      const amount = parseFloat(document.getElementById("amount").value);
+      const prediction = document.getElementById("prediction");
+
+      if (food in foodDB) {
+        const perGram = foodDB[food];
+        if (!isNaN(amount)) {
+          prediction.innerText = `Est. Calories: ${(perGram * amount).toFixed(2)} kcal`;
+        } else {
+          prediction.innerText = `Calories per gram: ${perGram}`;
+        }
+      } else {
+        prediction.innerText = `⚠️ Food not found in DB`;
+      }
+    }
+
+    function updateFoodList() {
+      const datalist = document.getElementById("foodList");
+      datalist.innerHTML = "";
+      Object.keys(foodDB).forEach(food => {
+        const option = document.createElement("option");
+        option.value = food;
+        datalist.appendChild(option);
+      });
+    }
+
+    function updateProgressRing(total) {
+      const ring = document.getElementById("progressRing");
+      const circumference = 314; // 2πr with r ≈ 50
+      const percent = Math.min(total / MAX_CAL, 1);
+      const offset = circumference * (1 - percent);
+      ring.style.strokeDashoffset = offset;
+    }
+
+    function renderMeals() {
+      const mealsDiv = document.getElementById("meals");
+      const today = new Date().toISOString().split("T")[0];
+      let total = 0;
+      mealsDiv.innerHTML = "";
+
+      meals.forEach((meal, index) => {
+        const date = meal.time.split("T")[0];
+        if (date === today) total += meal.calories;
+
+        const div = document.createElement("div");
+        div.className = "bg-gray-800 rounded-xl p-3 flex justify-between items-center shadow";
+
+        div.innerHTML = `
+          <div>
+            <div class="font-semibold capitalize">${meal.name} (${meal.amount}g)</div>
+            <div class="text-sm text-gray-400">${meal.calories.toFixed(2)} kcal • ${meal.time.split("T")[1].slice(0,5)}</div>
+          </div>
+          <button onclick="deleteMeal(${index})" class="text-red-400 hover:text-red-600">🗑️</button>
+        `;
+
+        mealsDiv.appendChild(div);
+      });
+
+      document.getElementById("total").innerText = total.toFixed(0);
+      updateProgressRing(total);
+    }
+
+    function addMeal() {
+      const food = document.getElementById("food").value.toLowerCase();
+      const amount = parseFloat(document.getElementById("amount").value);
+      const prediction = document.getElementById("prediction");
+      if (!food || isNaN(amount)) return;
+
+      if (!(food in foodDB)) {
+        prediction.innerText = `⚠️ Food not found in DB`;
+        return;
+      }
+
+      const calories = foodDB[food] * amount;
+      meals.push({
+        name: food,
+        amount,
+        calories,
+        time: new Date().toISOString()
+      });
+
+      localStorage.setItem("meals", JSON.stringify(meals));
+      document.getElementById("food").value = "";
+      document.getElementById("amount").value = "";
+      prediction.innerText = "";
+      renderMeals();
+    }
+
+    function deleteMeal(index) {
+      meals.splice(index, 1);
+      localStorage.setItem("meals", JSON.stringify(meals));
+      renderMeals();
+    }
+
+    updateFoodList();
+    renderMeals();
+  </script>
+</body>
+</html>
