@@ -1,178 +1,127 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Smart Food Tracker</title>
+  <meta charset="UTF-8" />
+  <title>Tracky — Smart Food Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            futuristic: ['"Orbitron"', 'sans-serif'],
-          },
-          colors: {
-            glass: 'rgba(255, 255, 255, 0.1)',
-            border: 'rgba(255, 255, 255, 0.2)'
-          }
-        }
-      }
-    };
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: radial-gradient(circle at top, #0f172a, #000000);
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 0 20px rgba(0,255,255,0.05);
+    }
+
+    .glow-ring {
+      background: conic-gradient(#22d3ee 0%, #22d3ee var(--progress), #334155 var(--progress));
+    }
+
+    .checkbox:checked + span::after {
+      content: "✅";
+      margin-left: 6px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white font-futuristic p-4 min-h-screen">
-
-  <div class="max-w-xl mx-auto space-y-6">
-    <h1 class="text-3xl text-center font-bold">🍽️ Smart Food Tracker</h1>
-
-    <!-- Input Section -->
-    <div class="bg-glass border border-border backdrop-blur-lg rounded-2xl p-4 space-y-4 shadow-lg">
-      <div class="flex flex-col sm:flex-row gap-2">
-        <input id="food" type="text" placeholder="Food name" oninput="suggestCalories()"
-          class="flex-1 p-2 rounded-xl bg-gray-800 text-white focus:outline-none" list="foodList" />
-        <input id="amount" type="number" placeholder="Amount (g)" class="w-32 p-2 rounded-xl bg-gray-800 text-white focus:outline-none" />
-        <button onclick="addMeal()" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl">➕ Add</button>
-      </div>
-      <datalist id="foodList"></datalist>
-      <p id="prediction" class="text-sm text-blue-300"></p>
+<body class="text-white min-h-screen p-6">
+  <div class="max-w-4xl mx-auto space-y-8">
+    <h1 class="text-4xl font-bold text-center text-cyan-300">🌟 Tracky: Smart Food Tracker</h1>
+    
+    <div class="text-center text-xl font-semibold">
+      <span id="greeting"></span> Here's your meal plan for <span id="dayLabel" class="text-cyan-400"></span>
     </div>
 
-    <!-- Progress -->
-    <div class="flex justify-center items-center">
-      <div class="relative w-32 h-32">
-        <svg class="absolute top-0 left-0 w-full h-full">
-          <circle cx="64" cy="64" r="50" stroke="gray" stroke-width="10" fill="none"/>
-          <circle id="progressRing" cx="64" cy="64" r="50" stroke="#3b82f6" stroke-width="10" fill="none"
-                  stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" />
-        </svg>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-          <div class="text-lg font-bold" id="total">0</div>
-          <div class="text-sm text-gray-400">/ 2000 kcal</div>
-        </div>
+    <div class="flex justify-center">
+      <div class="w-32 h-32 rounded-full glow-ring flex items-center justify-center text-xl font-bold" style="--progress: 0%">
+        <span id="caloriesProgress">0 kcal</span>
       </div>
     </div>
 
-    <!-- Meals List -->
-    <div id="meals" class="space-y-2"></div>
+    <div id="planner" class="grid sm:grid-cols-2 gap-4"></div>
   </div>
 
   <script>
-    const DEFAULT_DB = {
-      "banana": 0.89,
-      "apple": 0.52,
-      "rice": 1.3,
-      "chicken": 2.39,
-      "egg": 1.55,
-      "milk": 0.64,
-      "bread": 2.65,
-      "oats": 3.89,
-      "peanut butter": 5.88
-    };
-
-    let foodDB = JSON.parse(localStorage.getItem("foodDB") || JSON.stringify(DEFAULT_DB));
-    let meals = JSON.parse(localStorage.getItem("meals") || "[]");
-
-    const MAX_CAL = 2000;
-
-    function suggestCalories() {
-      const food = document.getElementById("food").value.toLowerCase();
-      const amount = parseFloat(document.getElementById("amount").value);
-      const prediction = document.getElementById("prediction");
-
-      if (food in foodDB) {
-        const perGram = foodDB[food];
-        if (!isNaN(amount)) {
-          prediction.innerText = `Est. Calories: ${(perGram * amount).toFixed(2)} kcal`;
-        } else {
-          prediction.innerText = `Calories per gram: ${perGram}`;
-        }
-      } else {
-        prediction.innerText = `⚠️ Food not found in DB`;
+    const mealPlan = [
+      {
+        day: "Day 1",
+        meals: [
+          { name: "Ragi dosa (3)", cal: 300 },
+          { name: "3 boiled eggs", cal: 210 },
+          { name: "Tomato chutney", cal: 60 },
+          { name: "Grilled chicken (200g)", cal: 330 },
+          { name: "Brown rice (1.5 cups)", cal: 320 },
+          { name: "Sautéed vegetables", cal: 120 },
+          { name: "Multigrain toast (3)", cal: 240 },
+          { name: "Peanut butter (2 tbsp)", cal: 180 },
+          { name: "Banana smoothie", cal: 250 },
+          { name: "Paneer bhurji (150g)", cal: 280 },
+          { name: "Chapati (2)", cal: 200 },
+          { name: "Cucumber salad", cal: 30 }
+        ]
+      },
+      {
+        day: "Day 2",
+        meals: [
+          { name: "Idli (4)", cal: 280 },
+          { name: "Sambar", cal: 120 },
+          { name: "Boiled egg (3)", cal: 210 },
+          { name: "Grilled fish (200g)", cal: 320 },
+          { name: "Quinoa (1 cup)", cal: 222 },
+          { name: "Stir-fried broccoli and carrots", cal: 120 },
+          { name: "Whole wheat sandwich with hummus", cal: 320 },
+          { name: "Greek yogurt with honey", cal: 150 },
+          { name: "Protein shake", cal: 250 },
+          { name: "Dal (1 cup)", cal: 198 },
+          { name: "Chapati (2)", cal: 200 },
+          { name: "Mixed veggie salad", cal: 30 }
+        ]
       }
-    }
+    ];
 
-    function updateFoodList() {
-      const datalist = document.getElementById("foodList");
-      datalist.innerHTML = "";
-      Object.keys(foodDB).forEach(food => {
-        const option = document.createElement("option");
-        option.value = food;
-        datalist.appendChild(option);
+    const goal = 2100;
+    const todayIndex = new Date().getDay() - 1;
+    const todayPlan = mealPlan[todayIndex >= 0 && todayIndex < mealPlan.length ? todayIndex : 0];
+
+    document.getElementById("dayLabel").textContent = todayPlan.day;
+
+    const hour = new Date().getHours();
+    const greeting =
+      hour < 12 ? "Good morning!" :
+      hour < 17 ? "Good afternoon!" : "Good evening!";
+    document.getElementById("greeting").textContent = greeting;
+
+    const plannerDiv = document.getElementById("planner");
+    const caloriesProgress = document.getElementById("caloriesProgress");
+    let totalCalories = 0;
+
+    todayPlan.meals.forEach((meal, i) => {
+      const wrapper = document.createElement("label");
+      wrapper.className = "flex items-center space-x-3 p-4 rounded-xl glass transition hover:bg-cyan-800/20 cursor-pointer";
+
+      wrapper.innerHTML = `
+        <input type="checkbox" class="checkbox h-5 w-5 accent-cyan-400" id="meal${i}" data-cal="${meal.cal}" />
+        <span class="flex-1 text-lg">${meal.name} <span class="text-sm text-gray-400">(${meal.cal} kcal)</span></span>
+      `;
+
+      plannerDiv.appendChild(wrapper);
+    });
+
+    document.querySelectorAll('.checkbox').forEach(box => {
+      box.addEventListener('change', () => {
+        const cal = parseInt(box.getAttribute("data-cal"));
+        totalCalories += box.checked ? cal : -cal;
+
+        const progress = Math.min((totalCalories / goal) * 100, 100).toFixed(1) + "%";
+        document.querySelector(".glow-ring").style.setProperty("--progress", progress);
+        caloriesProgress.textContent = `${totalCalories} kcal`;
       });
-    }
-
-    function updateProgressRing(total) {
-      const ring = document.getElementById("progressRing");
-      const circumference = 314; // 2πr with r ≈ 50
-      const percent = Math.min(total / MAX_CAL, 1);
-      const offset = circumference * (1 - percent);
-      ring.style.strokeDashoffset = offset;
-    }
-
-    function renderMeals() {
-      const mealsDiv = document.getElementById("meals");
-      const today = new Date().toISOString().split("T")[0];
-      let total = 0;
-      mealsDiv.innerHTML = "";
-
-      meals.forEach((meal, index) => {
-        const date = meal.time.split("T")[0];
-        if (date === today) total += meal.calories;
-
-        const div = document.createElement("div");
-        div.className = "bg-gray-800 rounded-xl p-3 flex justify-between items-center shadow";
-
-        div.innerHTML = `
-          <div>
-            <div class="font-semibold capitalize">${meal.name} (${meal.amount}g)</div>
-            <div class="text-sm text-gray-400">${meal.calories.toFixed(2)} kcal • ${meal.time.split("T")[1].slice(0,5)}</div>
-          </div>
-          <button onclick="deleteMeal(${index})" class="text-red-400 hover:text-red-600">🗑️</button>
-        `;
-
-        mealsDiv.appendChild(div);
-      });
-
-      document.getElementById("total").innerText = total.toFixed(0);
-      updateProgressRing(total);
-    }
-
-    function addMeal() {
-      const food = document.getElementById("food").value.toLowerCase();
-      const amount = parseFloat(document.getElementById("amount").value);
-      const prediction = document.getElementById("prediction");
-      if (!food || isNaN(amount)) return;
-
-      if (!(food in foodDB)) {
-        prediction.innerText = `⚠️ Food not found in DB`;
-        return;
-      }
-
-      const calories = foodDB[food] * amount;
-      meals.push({
-        name: food,
-        amount,
-        calories,
-        time: new Date().toISOString()
-      });
-
-      localStorage.setItem("meals", JSON.stringify(meals));
-      document.getElementById("food").value = "";
-      document.getElementById("amount").value = "";
-      prediction.innerText = "";
-      renderMeals();
-    }
-
-    function deleteMeal(index) {
-      meals.splice(index, 1);
-      localStorage.setItem("meals", JSON.stringify(meals));
-      renderMeals();
-    }
-
-    updateFoodList();
-    renderMeals();
+    });
   </script>
 </body>
 </html>
